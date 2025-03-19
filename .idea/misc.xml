@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="Black">
+    <option name="sdkName" value="Poetry (IIAgents)" />
+  </component>
+  <component name="GithubDefaultAccount">
+    <option name="defaultAccountId" value="e48fe9a4-835c-4cb4-86db-f33d145de645" />
+  </component>
+  <component name="MaterialThemeProjectNewConfig">
+    <option name="metadata">
+      <MTProjectMetadataState>
+        <option name="migrated" value="true" />
+        <option name="pristineConfig" value="false" />
+        <option name="userId" value="-1700ee74:19317af8b43:-7ffe" />
+      </MTProjectMetadataState>
+    </option>
+  </component>
+  <component name="ProjectRootManager" version="2" project-jdk-name="Poetry (IIAgents)" project-jdk-type="Python SDK" />
+</project>
