@@ -30,7 +30,7 @@ async def agent_conclusions(c: Analytics) -> dict[str, str | Analytics]:
         "conclusions": "conclusions"
     }
 
-async def agent_visualise(c: Analytics) -> dict:
+async def agent_visualise(c: dict) -> dict:
     '''логика визаулизации и тд'''
     return {
         "data": "hueta"

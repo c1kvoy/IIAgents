@@ -34,7 +34,7 @@ async def post_file_router(file: UploadFile = File(...)) -> dict[str, int | Path
 
 
 @app.get('/agent_processing')
-async def get_agent_processing() -> dict[str, bool]:
+async def get_agent_processing() -> dict[str, bool | str]:
     should_continue, question = await agent_processing()
     return { "status": should_continue, "question": question }
 
@@ -46,16 +46,16 @@ async def get_agent_validate(prompt: str) -> dict[str, bool | str]:
 
 
 @app.get('/agent_analysis')
-async def get_agent_analysis() -> JSONResponse:
+async def get_agent_analysis() -> Analytics:
     results = await agent_analysis()
-    return JSONResponse(content=results)
+    return results
 
 @app.post('/agent_conclusions')
 async def post_agent_conclusions(context: Analytics) -> JSONResponse:
     results = await agent_conclusions(context)
     return JSONResponse(content=results)
 
-@app.get('/agent_visualise')
+@app.post('/agent_visualise')
 async def get_agent_visualise(context: dict) -> dict[str, bool]:
     results = await agent_visualise(context)
     return JSONResponse(content=results)
