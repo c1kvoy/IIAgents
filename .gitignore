@@ -174,4 +174,4 @@ uploads/
 
 # PyPI configuration file
 .pypirc
-.DS_Store
+.DS_Store__pycache__/
