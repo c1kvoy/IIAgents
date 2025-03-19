@@ -10,7 +10,6 @@ from src.api.methods import (
     agent_processing,
     agent_validate,
     agent_analysis,
-    agent_conclusions,
     agent_visualise,
 )
 
@@ -33,29 +32,26 @@ async def post_file_router(file: UploadFile = File(...)) -> dict[str, int | Path
     return {"status": 200, "filename": upload_path}
 
 
-@app.get('/agent_processing')
-async def get_agent_processing() -> dict[str, bool | str]:
-    should_continue, question = await agent_processing()
+@app.get('/agent_processing/{file_id}')
+async def get_agent_processing(file_id: str) -> dict[str, bool | str]:
+    should_continue, question = await agent_processing(file_id)
     return { "status": should_continue, "question": question }
 
 
-@app.get('/agent_validate')
+@app.post('/agent_validate')
 async def get_agent_validate(prompt: str) -> dict[str, bool | str]:
-    status, issue = await agent_validate()
+    status, issue = await agent_validate(prompt)
     return { "status": status, "issues": issue}
 
 
 @app.get('/agent_analysis')
-async def get_agent_analysis() -> Analytics:
+async def get_agent_analysis() -> JSONResponse:
+    '''сухие численные данные по типу корреляция и тд'''
     results = await agent_analysis()
-    return results
-
-@app.post('/agent_conclusions')
-async def post_agent_conclusions(context: Analytics) -> JSONResponse:
-    results = await agent_conclusions(context)
     return JSONResponse(content=results)
 
 @app.post('/agent_visualise')
 async def get_agent_visualise(context: dict) -> dict[str, bool]:
+    '''выбросы аномалии и тд'''
     results = await agent_visualise(context)
     return JSONResponse(content=results)

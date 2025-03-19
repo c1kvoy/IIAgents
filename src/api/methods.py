@@ -3,24 +3,17 @@ from src.api.schemas import (
     Analytics
 )
 
-async def agent_processing() -> [bool, str]:
+async def agent_processing(id: str) -> [bool, str]:
     '''возвращает статус процессинга (нужно или нет переспрашивать пользователя) и вопрос, интересуующий ллмку'''
     return True, "question"
 
-async def agent_validate() -> [bool, str]:
+async def agent_validate(prompt: str) -> [bool, str]:
     '''возвращает статус(валиден ли запрос) и как нужно улучшить запрос + проверка безопасности'''
     return [True,'prompt']
 
-async def agent_analysis() -> Analytics:
-    '''логика агента анализа'''
-    return Analytics(
-        average=3212,
-        cor=0.1,
-        etc="etc"
-    )
 
-async def agent_conclusions(c: Analytics) -> dict[str, str | Analytics]:
-    '''логика агента подведения итогов парсим объект аналитики'''
+async def agent_analysis() -> dict[str, str | Analytics]:
+    '''логика агента подведения итогов парсим объект аналитики, возвращаем численную аналитику и выводы агента'''
     return {
         "analysis":  {
             "average": 3212,
