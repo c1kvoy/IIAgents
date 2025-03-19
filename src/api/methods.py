@@ -4,5 +4,5 @@ async def agent_processing() -> [bool, str]:
     return True, "question"
 
 async def agent_validate() -> [bool, str]:
-    '''возвращает статус(валиден ли запрос) и как нужно улучшить запрос'''
+    '''возвращает статус(валиден ли запрос) и как нужно улучшить запрос + проверка безопасности'''
     return [True,'prompt']

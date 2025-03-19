@@ -30,7 +30,7 @@ async def post_file_router(file: UploadFile = File(...)) -> dict[str, int | Path
 @app.get('/agent_processing')
 async def get_agent_processing() -> dict[str, bool]:
     should_continue, question = await agent_processing()
-    return { "status": should_continue }
+    return { "status": should_continue, "question": question }
 
 
 @app.get('/agent_validate')
