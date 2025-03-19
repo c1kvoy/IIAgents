@@ -1,13 +1,19 @@
-import csv
 import io
-
-from src.api.methods import (
-    agent_processing,
-    agent_validate
-)
 from fastapi import FastAPI, File, UploadFile, HTTPException as FastAPIHTTPException
+from fastapi.responses import JSONResponse
 from pathlib import Path
 import pandas as pd
+from src.api.schemas import (
+    Analytics
+)
+from src.api.methods import (
+    agent_processing,
+    agent_validate,
+    agent_analysis,
+    agent_conclusions,
+    agent_visualise,
+)
+
 app = FastAPI()
 
 UPLOAD_DIR = Path("../uploads")
@@ -38,3 +44,18 @@ async def get_agent_validate(prompt: str) -> dict[str, bool | str]:
     status, issue = await agent_validate()
     return { "status": status, "issues": issue}
 
+
+@app.get('/agent_analysis')
+async def get_agent_analysis() -> JSONResponse:
+    results = await agent_analysis()
+    return JSONResponse(content=results)
+
+@app.post('/agent_conclusions')
+async def post_agent_conclusions(context: Analytics) -> JSONResponse:
+    results = await agent_conclusions(context)
+    return JSONResponse(content=results)
+
+@app.get('/agent_visualise')
+async def get_agent_visualise(context: dict) -> dict[str, bool]:
+    results = await agent_visualise(context)
+    return JSONResponse(content=results)
