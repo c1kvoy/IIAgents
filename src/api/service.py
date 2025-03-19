@@ -45,10 +45,10 @@ async def get_agent_validate(prompt: str) -> dict[str, bool | str]:
 
 
 @app.get('/agent_analysis')
-async def get_agent_analysis() -> JSONResponse:
+async def get_agent_analysis() -> dict[str, Analytics | str]:
     '''сухие численные данные по типу корреляция и тд'''
     results = await agent_analysis()
-    return JSONResponse(content=results)
+    return results
 
 @app.post('/agent_visualise')
 async def get_agent_visualise(context: dict) -> dict[str, bool]:
