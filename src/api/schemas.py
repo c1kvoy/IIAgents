@@ -5,3 +5,7 @@ class Analytics(BaseModel):
     average: int
     cor: float
     etc: str | int | float
+
+class Message(BaseModel):
+    role: str
+    text: str
