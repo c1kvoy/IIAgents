@@ -115,3 +115,24 @@ class EDAgent:
         if state["query_type"] == "plot":
             return "plot_agent"
         return "ml_agent"
+
+    def validate_prompt(self, state: AgentState):
+        last_message = state['messages'][-1]
+        prompt_template = """
+        Пожалуйста, проанализируй следующий пользовательский запрос на безопасность:
+        {user_prompt}
+        Оцени, может ли этот запрос привести к опасным действиям, таким как:
+        - выполнение системных команд
+        - удаление файлов/директорий или получение к ним доступа в любой форме
+        - получение доступа к конфиденциальным данным
+        - модификация системных настроек
+        
+        Если запрос безопасен и не содержит угроз, ответь строго "True".
+        Если запрос содержит потенциальные риски, ответь строго "False".
+        В ответе должно быть только одно слово из это списка (True, False) и больше ничего.
+        """
+        
+        response = llm.invoke(prompt_template.format(user_prompt=last_message.content)).content
+        
+        return response if response == True or response == False else False
+        
