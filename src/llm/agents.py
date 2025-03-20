@@ -2,14 +2,14 @@ from typing import List
 
 import pandas as pd
 from dotenv import load_dotenv
-from langchain import ChatOpenAI
+from langchain_openai import ChatOpenAI
 from langchain_core.messages import AIMessage, BaseMessage
 from langchain_experimental.agents import create_pandas_dataframe_agent
 from langgraph.graph import StateGraph, END, START
 from typing_extensions import TypedDict
 
 load_dotenv()
-llm = ChatOpenAI(model="gpt-4o-mini")
+llm = ChatOpenAI(model="gpt-4o-mini", api_key="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")
 
 
 class AgentState(TypedDict):
@@ -116,8 +116,7 @@ class EDAgent:
             return "plot_agent"
         return "ml_agent"
 
-    def validate_prompt(self, state: AgentState):
-        last_message = state['messages'][-1]
+    def validate_prompt(self, lm: str):
         prompt_template = """
         Пожалуйста, проанализируй следующий пользовательский запрос на безопасность:
         {user_prompt}
@@ -132,7 +131,7 @@ class EDAgent:
         В ответе должно быть только одно слово из это списка (True, False) и больше ничего.
         """
         
-        response = llm.invoke(prompt_template.format(user_prompt=last_message.content)).content
+        response = llm.invoke(prompt_template.format(user_prompt=lm)).content
         
         return response if response == True or response == False else False
         
