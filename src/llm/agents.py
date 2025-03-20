@@ -1,14 +1,15 @@
 from typing import List
 
 import pandas as pd
+from dotenv import load_dotenv
+from langchain import ChatOpenAI
 from langchain_core.messages import AIMessage, BaseMessage
 from langchain_experimental.agents import create_pandas_dataframe_agent
-from langchain_groq import ChatGroq
 from langgraph.graph import StateGraph, END, START
 from typing_extensions import TypedDict
 
-df = pd.read_csv("/content/sample_data/california_housing_train.csv")
-llm = ChatGroq(model="llama3-70b-8192")
+load_dotenv()
+llm = ChatOpenAI(model="gpt-4o-mini")
 
 
 class AgentState(TypedDict):
@@ -42,7 +43,8 @@ class EDAgent:
         return self.graph.invoke({"dataframe": dataframe, "messages": messages})
 
     def __query_analyzer(self, state: AgentState):
-        last_message = state['messages'][-1]
+        print(state["messages"])
+        last_message = state["messages"][-1]
         prompt_template = """
       У тебя есть следующий запрос от пользователя:\n
       {user_prompt}\n
