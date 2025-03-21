@@ -2,7 +2,7 @@ from typing import List
 
 import pandas as pd
 from dotenv import load_dotenv
-from langchain.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI
 from langchain_core.messages import AIMessage, BaseMessage
 from langchain_experimental.agents import create_pandas_dataframe_agent
 from langgraph.graph import StateGraph, END, START
@@ -63,7 +63,7 @@ class EDAgent:
         agent = create_pandas_dataframe_agent(
             llm,
             state["dataframe"],
-            # agent_type="tool-calling",
+            agent_type="tool-calling",
             verbose=True,
             allow_dangerous_code=True
         )
