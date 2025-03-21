@@ -3,6 +3,7 @@ from fastapi import FastAPI, File, UploadFile, HTTPException as FastAPIHTTPExcep
 from fastapi.responses import JSONResponse
 from pathlib import Path
 import pandas as pd
+from fastapi.middleware.cors import CORSMiddleware
 from src.api.schemas import (
     Analytics,
     Message,
@@ -14,6 +15,17 @@ from src.api.methods import (
 )
 
 app = FastAPI()
+
+
+origins = ["*"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 UPLOAD_DIR = Path("../uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
