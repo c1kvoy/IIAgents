@@ -9,7 +9,7 @@ from langgraph.graph import StateGraph, END, START
 from typing_extensions import TypedDict
 
 load_dotenv()
-llm = ChatOpenAI(model="gpt-4o-mini", api_key="")
+llm = ChatOpenAI(model="gpt-4o-mini", api_key="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")
 
 
 class AgentState(TypedDict):
