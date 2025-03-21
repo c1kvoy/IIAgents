@@ -55,3 +55,16 @@ def post_interact_router(context: list[Message], file_id: str) -> JSONResponse:
     df = pd.read_csv(upload_path)
     response = interact(context, df)
     return JSONResponse(content=response)
+
+from fastapi.responses import FileResponse
+
+@app.get('/get_file/{file_name}')
+def get_file_router(file_name: str):
+    if file_name == '':
+        raise FastAPIHTTPException(status_code=404, detail="No filename provided")
+    if file_name and not file_name.endswith('.csv'):
+        raise FastAPIHTTPException(status_code=405, detail="File extension not supported")
+    upload_path = UPLOAD_DIR / file_name
+    if not upload_path.exists():
+        raise FastAPIHTTPException(status_code=404, detail="File not found")
+    return FileResponse(path=upload_path, filename=file_name, media_type='text/csv')

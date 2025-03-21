@@ -11,7 +11,7 @@ from src.llm.agents import (
     EDAgent
 )
 agent = EDAgent()
-async def agent_processing(df) -> str:
+def agent_processing(df) -> str:
     '''возвращает статус процессинга (нужно или нет переспрашивать пользователя) и вопрос, интересуующий ллмку'''
     response = agent.invoke([SystemMessage(
         "Тебя зовут EDA_NA_DOM. Ты лучший аналитик данных и специалист в машинном обучении. Ответы присылай на русском языке!!!! Если вопрос слишком общий, то спроси какие-нибудь уточняющие детали."),
@@ -19,7 +19,7 @@ async def agent_processing(df) -> str:
     return response["answer"]
 
 
-async def interact(context: list[Message], df: DataFrame) -> dict[str, list | str]:
+def interact(context: list[Message], df: DataFrame) -> dict[str, list | str]:
     latest_mes = context[-1] if context[-1].role == 'human' else context[-2]
     is_cool = agent.validate_prompt(latest_mes.text)
     if not is_cool:
@@ -29,6 +29,7 @@ async def interact(context: list[Message], df: DataFrame) -> dict[str, list | st
         HumanMessage(latest_mes.text)],
         df
     )
+    print(response["answer"])
     final_response: dict[str, list|str] = {"plots": [], "answer": response["answer"]}
     if response["plots"]:
         final_response["plots"] = response["plots"]
