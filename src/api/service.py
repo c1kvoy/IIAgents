@@ -60,11 +60,28 @@ from fastapi.responses import FileResponse
 
 @app.post('/get_file')
 def post_file_router(file_name: str):
+    # Remove any path components and get just the filename
+    file_name = Path(file_name).name
+    
     if file_name == '':
         raise FastAPIHTTPException(status_code=404, detail="No filename provided")
-    if file_name and not file_name.endswith('.csv'):
+    
+    # Check for supported file extensions
+    supported_extensions = {
+        '.csv': 'text/csv',
+        '.png': 'image/png'
+    }
+    file_extension = Path(file_name).suffix.lower()
+    
+    if file_extension not in supported_extensions:
         raise FastAPIHTTPException(status_code=405, detail="File extension not supported")
+        
     upload_path = UPLOAD_DIR / file_name
     if not upload_path.exists():
         raise FastAPIHTTPException(status_code=404, detail="File not found")
-    return FileResponse(path=upload_path, filename=file_name, media_type='text/csv')
+    
+    return FileResponse(
+        path=upload_path, 
+        filename=file_name, 
+        media_type=supported_extensions[file_extension]
+    )

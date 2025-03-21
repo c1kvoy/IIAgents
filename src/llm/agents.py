@@ -9,7 +9,7 @@ from langgraph.graph import StateGraph, END, START
 from typing_extensions import TypedDict
 
 load_dotenv()
-llm = ChatOpenAI(model="gpt-4o-mini")
+llm = ChatOpenAI(model="gpt-4o-mini", api_key="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")
 
 
 class AgentState(TypedDict):
@@ -81,20 +81,34 @@ class EDAgent:
 
     def __plot_agent(self, state: AgentState):
         user_prompt = state['messages'][-1].content
-        code = llm.invoke("""Сгенерируй код для решения следующей задачи:\n
-      {user_prompt}\n
-      Все графики, которые возникают в твоем коде сохраняй в формате png в папке {plots_dir}. 
-      В переменную plots сохрани пути до сохраненных изображений.
-      Пиши код, считая, что переменная df уже инициализирована. В ответе напиши только исполняемый код и ничего более.
-      """.format(user_prompt=user_prompt, plots_dir=self.plots_dir)).content
+        df = state['dataframe']
+        # Get actual column names
+        columns = ", ".join(df.columns.tolist())
+        
+        code = llm.invoke(f"""Сгенерируй код для решения следующей задачи:\n
+        {user_prompt}\n
+        Доступные колонки в датафрейме: {columns}\n
+        Используй только эти колонки в своем коде, не придумывай новые.\n
+        Все графики, которые возникают в твоем коде сохраняй в формате png в папке {self.plots_dir}. 
+        В переменную plots сохрани ТОЛЬКО ИМЕНА файлов (не полный путь, а только название_файла.png).
+        Пример: plots = ['graph1.png', 'correlation.png']
+        Пиши код, считая, что переменная df уже инициализирована. В ответе напиши только исполняемый код и ничего более.""").content
+        
+        # Rest of the method remains the same
         code_clear = llm.invoke(
             "В данном сообщении оставь только код python:\n{code}".format(code=code)).content.replace("`", "").replace(
             "python", "")
         vars = {"df": state['dataframe']}
+        import matplotlib
+        matplotlib.use("Agg")
         print(code_clear)
-        exec(code_clear, vars)
-        plots = vars["plots"]
-        return {"answer": "Графики предоставлены.", "plots": plots}
+        try:
+            exec(code_clear, vars)
+            plots = vars.get("plots", [])
+            return {"answer": "Графики предоставлены.", "plots": plots}
+        except Exception as e:
+            print(f"Error executing plot code: {str(e)}")
+            return {"answer": f"Произошла ошибка при построении графиков: {str(e)}", "plots": []}
 
     def __ml_agent(self, state: AgentState):
         user_prompt = state['messages'][-1].content
