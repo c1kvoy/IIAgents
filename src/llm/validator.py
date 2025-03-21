@@ -16,6 +16,5 @@ def validate_prompt(message: str):
   В ответе должно быть только одно слово из это списка (True, False) и больше ничего.
   """
 
-    response = llm.invoke(prompt_template.format(user_prompt=message.content)).content.strip()
-
-    return response if response == True or response == False else False
+    response = llm.invoke(prompt_template.format(user_prompt=message)).content.strip()
+    return bool(response)
