@@ -1,0 +1,11 @@
+services:
+  app:
+    build: .
+    container_name: iiagents-app
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/IIAgents
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: ["poetry", "run", "gunicorn", "-k", "uvicorn.workers.UvicornWorker", "-w", "4", "-b", "0.0.0.0:8000", "src.api.service:app"]
