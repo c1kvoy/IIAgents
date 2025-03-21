@@ -1,4 +1,3 @@
-
 from langchain_core.messages import SystemMessage, HumanMessage
 from fastapi import HTTPException as FastAPIHTTPException
 from pandas.core.interchange.dataframe_protocol import DataFrame
@@ -21,7 +20,8 @@ def agent_processing(df) -> str:
 
 def interact(context: list[Message], df: DataFrame) -> dict[str, list | str]:
     latest_mes = context[-1] if context[-1].role == 'human' else context[-2]
-    is_cool = agent.validate_prompt(latest_mes.text)
+    # Wrap the message into a state dictionary for validation:
+    is_cool = agent.validate_prompt({"messages": [HumanMessage(latest_mes.text)]})
     if not is_cool:
         raise FastAPIHTTPException(status_code=404, detail="unhealthy behavior")
     response = agent.invoke([SystemMessage(
