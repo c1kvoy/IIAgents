@@ -132,5 +132,5 @@ class EDAgent:
         
         response = llm.invoke(prompt_template.format(user_prompt=lm)).content
         
-        return response if response == True or response == False else False
+        return response if response == "True" or response == "False" else False
         
