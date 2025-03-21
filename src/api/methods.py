@@ -30,9 +30,10 @@ def interact(context: list[Message], df: DataFrame) -> dict[str, list | str]:
         df
     )
     print(response["answer"])
-    final_response: dict[str, list|str] = {"plots": [], "answer": response["answer"]}
-    if response["plots"] is not None:
-        final_response["plots"] = response["plots"]
+    final_response = {
+        "plots": response.get("plots", []),
+        "answer": response.get("answer", "Ответ не найден")
+    }
     return final_response
 
 # async def agent_validate(prompt: str) -> [bool, str]:
