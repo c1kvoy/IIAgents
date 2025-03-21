@@ -33,11 +33,10 @@ class EDAgent:
                                             self.__query_choose,
                                             {"pandas_agent": "pandas_agent", "ml_agent": "ml_agent",
                                              "plot_agent": "plot_agent"})
-        # graph_builder.add_edge("query_analyzer", "pandas_agent")
         graph_builder.add_edge("pandas_agent", END)
         graph_builder.add_edge("ml_agent", END)
         graph_builder.add_edge("plot_agent", END)
-        self.plots_dir = "./plots"
+        self.plots_dir = "../uploads"
 
         self.graph = graph_builder.compile()
 
@@ -113,8 +112,8 @@ class EDAgent:
       Сохрани графики в формате .png в папку {plots_dir} 
       (проверяй, чтобы названия файлов были новыми, называй их просто числами по порядку).
       Добавь названия всех сохраненных изображений в лист plots.
-      Не забудь, что не все признаки являются числовыми, для категориальных признаков используй one-hot-encoding.
-      Считай, что переменная df у тебя уже инициализирована (сырой датафрейм)
+      Считай, что переменная df у тебя уже инициализирована (сырой датафрейм).
+      Для начала отфильтруй только числовые признаки.
       В ответе напиши только код python, который выполнит поставленную
       задачу.
       """.format(user_prompt=user_prompt, plots_dir=self.plots_dir))
@@ -126,6 +125,7 @@ class EDAgent:
         exec(code_clear, vars)
         plots = vars["plots"]
         print(plots)
+        return {"answer": "Модель построена", "plots": plots}
 
     def __query_choose(self, state: AgentState):
         if state["query_type"] == "pd":
@@ -149,8 +149,7 @@ class EDAgent:
         Если запрос содержит потенциальные риски, ответь строго "False".
         В ответе должно быть только одно слово из это списка (True, False) и больше ничего.
         """
-        
+
         response = llm.invoke(prompt_template.format(user_prompt=last_message.content)).content
-        
+
         return response if response == True or response == False else False
-        
