@@ -31,7 +31,7 @@ def interact(context: list[Message], df: DataFrame) -> dict[str, list | str]:
     )
     print(response["answer"])
     final_response: dict[str, list|str] = {"plots": [], "answer": response["answer"]}
-    if response["plots"]:
+    if response["plots"] is not None:
         final_response["plots"] = response["plots"]
     return final_response
 

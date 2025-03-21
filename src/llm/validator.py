@@ -17,4 +17,4 @@ def validate_prompt(message: str):
   """
 
     response = llm.invoke(prompt_template.format(user_prompt=message)).content.strip()
-    return bool(response)
+    return True if response == "True" else False
