@@ -42,7 +42,7 @@ def post_file_router(file: UploadFile = File(...)) -> JSONResponse:
     print(df)
     df.to_csv(upload_path, index=False)
     response = agent_processing(df)
-    return JSONResponse(content={"response": response})
+    return JSONResponse(content={"answer": response, "file_id": file.filename})
 
 
 @app.post('/interact/{file_id}')
