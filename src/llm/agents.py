@@ -7,9 +7,40 @@ from langchain_core.messages import AIMessage, BaseMessage
 from langchain_experimental.agents import create_pandas_dataframe_agent
 from langgraph.graph import StateGraph, END, START
 from typing_extensions import TypedDict
+import numpy as np
+from langchain.schema import StrOutputParser, Document
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnableLambda
+from langchain.retrievers import BM25Retriever, EnsembleRetriever
+from langchain.vectorstores import FAISS
+from langchain.embeddings import HuggingFaceEmbeddings
+from langchain_core.runnables import RunnablePassthrough
+from langchain.embeddings import HuggingFaceEmbeddings
+
+emb_model = HuggingFaceEmbeddings(model_name="intfloat/multilingual-e5-large-instruct")
 
 load_dotenv()
 llm = ChatOpenAI(model="gpt-4o-mini", api_key="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")
+
+loaded_index = FAISS.load_local(
+    folder_path="EDA", #путь до папки с вектором
+    allow_dangerous_deserialization=True,
+    embeddings=emb_model
+)
+
+faiss_retriever = loaded_index.as_retriever(
+    search_type="similarity",
+    k=3,
+    score_threshold=None,
+)
+
+bm25 = BM25Retriever.from_documents(split_EDA)
+bm25.k = 3
+
+ensemble_retriever = EnsembleRetriever(
+    retrievers=[bm25, faiss_retriever],
+    weights=[0.3, 0.7]
+)
 
 
 class AgentState(TypedDict):
@@ -73,8 +104,9 @@ class EDAgent:
       Дай ответ, предварительно проведя анализ df. 
       Если запрос слишком обширный, нет конкретики, напиши об этом в ответе. 
       Ответ верни на том же языке, на котором был запрос.
+      Для контекста можешь выборочно использовать данный контекст (если релевантный): {context}.
       """
-        output = agent.invoke(prompt_template.format(user_prompt=state['messages'][-1].content))["output"]
+        output = agent.invoke(prompt_template.format(user_prompt=state['messages'][-1].content, context='\n\n'.join([x.page_content for x in ensemble_retriever.get_relevant_documents(row['answer a'])])["output"]))
         print(output)
         state["messages"].append(AIMessage(output))
         return {'answer': output}
