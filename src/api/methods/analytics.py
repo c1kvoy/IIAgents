@@ -2,8 +2,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 from fastapi import HTTPException as FastAPIHTTPException
 from pandas.core.interchange.dataframe_protocol import DataFrame
 
-from src.api.schemas import (
-    Analytics,
+from src.api.schemas.analytics import (
     Message,
 )
 from src.llm.agents import (
@@ -35,25 +34,3 @@ def interact(context: list[Message], df: DataFrame) -> dict[str, list | str]:
         "answer": response.get("answer", "Ответ не найден")
     }
     return final_response
-
-# async def agent_validate(prompt: str) -> [bool, str]:
-#     '''возвращает статус(валиден ли запрос) и как нужно улучшить запрос + проверка безопасности'''
-#     return [True,'prompt']
-#
-#
-# async def agent_analysis() -> dict[str, str | Analytics]:
-#     '''логика агента подведения итогов парсим объект аналитики, возвращаем численную аналитику и выводы агента'''
-#     return {
-#         "analysis":  {
-#             "average": 3212,
-#             "cor": .1,
-#             "etc": "etc"
-#         },
-#         "conclusions": "conclusions"
-#     }
-#
-# async def agent_visualise(c: dict) -> dict:
-#     '''логика визаулизации и тд'''
-#     return {
-#         "data": "hueta"
-#     }
