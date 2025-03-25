@@ -9,7 +9,7 @@ from langgraph.graph import StateGraph, END, START
 from typing_extensions import TypedDict
 
 load_dotenv()
-llm = ChatOpenAI(model="gpt-4o-mini", api_key="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")
+llm = ChatOpenAI(model="gpt-4o-mini")
 
 
 class AgentState(TypedDict):
@@ -84,7 +84,7 @@ class EDAgent:
         df = state['dataframe']
         # Get actual column names
         columns = ", ".join(df.columns.tolist())
-        
+
         code = llm.invoke(f"""Сгенерируй код для решения следующей задачи:\n
         {user_prompt}\n
         Доступные колонки в датафрейме: {columns}\n
@@ -93,11 +93,12 @@ class EDAgent:
         В переменную plots сохрани ТОЛЬКО ИМЕНА файлов (не полный путь, а только название_файла.png).
         Пример: plots = ['graph1.png', 'correlation.png']
         Пиши код, считая, что переменная df уже инициализирована. В ответе напиши только исполняемый код и ничего более.""").content
-        
+
         # Rest of the method remains the same
         code_clear = llm.invoke(
-            "В данном сообщении оставь только код python:\n{code}".format(code=code)).content.replace("`", "").replace(
-            "python", "")
+            "В данном сообщении оставь только код python:\n{code}".format(code=code)).content.replace("```python",
+                                                                                                      "").replace(
+            "```", "")
         vars = {"df": state['dataframe']}
         import matplotlib
         matplotlib.use("Agg")
@@ -112,34 +113,38 @@ class EDAgent:
 
     def __ml_agent(self, state: AgentState):
         user_prompt = state['messages'][-1].content
-        plots = []
+        df = state["dataframe"]
         code = llm.invoke("""
       Ты специалист в области машинного обучения, ты мастерски владеешь библиотеками pandas, numpy, sklearn, matplotlib, seaborn. 
       Пользователь справшивает:\n
       {user_prompt}\n
       Подумай, какие методы машинного обучения будут наиболее релевантны в данной задаче. 
-      Если будешь строить линейную модель, 
-      выведи коэффициенты при переменных, если будешь строить дерево решений (ограничение глубины - 3), 
-      выведи само дерево с помощью функции plot_tree() (обязательно используй эту функцию, 
-      если будешь обучать решающее дерево, поставь параметры так, чтобы названия переменных на риснуке были подписаны).
-      Выведи accuracy модели и сохрани его в переменную accuracy.
-      Сохрани графики в формате .png в папку {plots_dir} 
+      Если будешь строить линейную модель, выведи коэффициенты при переменных и визуализируй их
+      если будешь строить дерево решений (ограничение глубины - 3), 
+      выведи само дерево с помощью функции plot_tree() (поставь параметры так, чтобы названия переменных на риснуке были подписаны).
+      Сохрани графики в формате .pdf в папку {plots_dir} 
       (проверяй, чтобы названия файлов были новыми, называй их просто числами по порядку).
       Добавь названия всех сохраненных изображений в лист plots.
       Считай, что переменная df у тебя уже инициализирована (сырой датафрейм).
+      Доступные колонки в датафрейме: {columns}
+      Типы колонок: {dtypes}
       Для начала отфильтруй только числовые признаки.
       В ответе напиши только код python, который выполнит поставленную
       задачу.
-      """.format(user_prompt=user_prompt, plots_dir=self.plots_dir))
+      """.format(user_prompt=user_prompt, plots_dir=self.plots_dir, columns=df.columns, dtypes=df.dtypes))
         code_clear = llm.invoke(
-            "В данном сообщении оставь только код python:\n{code}".format(code=code)).content.replace("`", "").replace(
-            "python", "")
+            "В данном сообщении оставь только код python:\n{code}".format(code=code)).content.replace("```python",
+                                                                                                      "").replace(
+            "```", "")
         vars = {"df": state['dataframe']}
         print(code_clear)
-        exec(code_clear, vars)
-        plots = vars["plots"]
-        print(plots)
-        return {"answer": "Модель построена", "plots": plots}
+        try:
+            exec(code_clear, vars)
+            plots = vars.get("plots", [])
+            return {"answer": "Модель построена.", "plots": plots}
+        except Exception as e:
+            print(f"Error executing plot code: {str(e)}")
+            return {"answer": f"Произошла ошибка при построении модели: {str(e)}", "plots": []}
 
     def __query_choose(self, state: AgentState):
         if state["query_type"] == "pd":
