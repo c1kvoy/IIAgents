@@ -4,25 +4,28 @@ from fastapi import (
     HTTPException as FastAPIHTTPException,
     UploadFile,
     File,
+    Depends,
 )
 import io
+
 from fastapi.responses import JSONResponse, FileResponse
 import pandas as pd
-from src.api.methods.analytics import (
+from src.api.analytics.analytics_methods import (
     agent_processing,
     interact
 )
-from src.api.schemas.analytics import (
+from src.api.analytics.analytics_schemas import (
     Message
 )
+from src.api.auth.methods import authorize
 
-analytics_router = APIRouter()
+analytics_router = APIRouter(dependencies=[Depends(authorize)])
 
 UPLOAD_DIR = Path("../uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 
 @analytics_router.post('/file')
-def post_file_router(file: UploadFile = File(...)) -> JSONResponse:
+async def post_file_router(file: UploadFile = File(...)) -> JSONResponse:
     if file.filename == '':
         raise FastAPIHTTPException(status_code=404, detail="No filename provided")
     if file and not file.filename.endswith('.csv'):
@@ -37,7 +40,7 @@ def post_file_router(file: UploadFile = File(...)) -> JSONResponse:
 
 
 @analytics_router.post('/interact/{file_id}')
-def post_interact_router(context: list[Message], file_id: str) -> JSONResponse:
+async def post_interact_router(context: list[Message], file_id: str) -> JSONResponse:
     if file_id == '':
         raise FastAPIHTTPException(status_code=404, detail="No filename provided")
     if file_id and not file_id.endswith('.csv'):
@@ -49,14 +52,10 @@ def post_interact_router(context: list[Message], file_id: str) -> JSONResponse:
 
 
 @analytics_router.post('/get_file')
-def post_file_router(file_name: str):
-    # Remove any path components and get just the filename
+async def post_file_router(file_name: str):
     file_name = Path(file_name).name
-
     if file_name == '':
         raise FastAPIHTTPException(status_code=404, detail="No filename provided")
-
-    # Check for supported file extensions
     supported_extensions = {
         '.csv': 'text/csv',
         '.png': 'image/png'
