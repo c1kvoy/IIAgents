@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   app:
     build: .
@@ -8,4 +10,32 @@ services:
       - .:/IIAgents
     environment:
       - PYTHONUNBUFFERED=1
-    command: ["poetry", "run", "gunicorn", "-k", "uvicorn.workers.UvicornWorker", "-w", "4", "-b", "0.0.0.0:8000", "src.api.service:app"]
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/iiagents
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "sleep 5 &&
+      poetry run gunicorn -k uvicorn.workers.UvicornWorker -w 2
+      -t 60 -b 0.0.0.0:8000 src.api.service:app"
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: iiagents-postgres
+    environment:
+      - DB_SKIP_CREATE_IF_EXISTS=true
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=iiagents
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d iiagents"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:

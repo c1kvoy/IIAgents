@@ -2,7 +2,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 from fastapi import HTTPException as FastAPIHTTPException
 from pandas.core.interchange.dataframe_protocol import DataFrame
 
-from src.api.schemas.analytics import (
+from src.api.analytics.analytics_schemas import (
     Message,
 )
 from src.llm.agents import (
