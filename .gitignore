@@ -175,5 +175,5 @@ src/uploads/
 # PyPI configuration file
 .pypirc
 .DS_Store__pycache__/
-
+.DS_Store
 /src/llm/test.ipynb.DS_Store
