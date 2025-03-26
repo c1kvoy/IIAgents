@@ -16,8 +16,8 @@ from src.api.auth.utils import (
 from fastapi.security import OAuth2PasswordBearer
 from fastapi import Depends
 from src.core.config import settings
-from src.database import methods as user_methods
 from src.database import database
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="users/auth/login")
 
 

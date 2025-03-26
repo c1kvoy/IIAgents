@@ -44,17 +44,6 @@ async def get_users(db_: AsyncSession):
     result = result.scalars().all()
     return result
 
-async def get_k_last_messages_from_chat(k_: int, user_id_: int, chat_id_: int, db_: AsyncSession) -> list[
-    MessageSchema]:
-    query = select(models.MessageModel)\
-        .where(and_(models.MessageModel.user_id == user_id_, models.MessageModel.chat_id == chat_id_))\
-        .order_by(models.MessageModel.created_at.desc())\
-        .limit(k_)
-
-    data = await db_.execute(query)
-    messages = data.scalars().all()
-
-    return [MessageSchema.model_validate(msg) for msg in messages]
 
 
 

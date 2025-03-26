@@ -1,33 +1,52 @@
+from datetime import datetime
+from pathlib import Path
+import pandas as pd
 from langchain_core.messages import SystemMessage, HumanMessage
 from fastapi import HTTPException as FastAPIHTTPException
-from pandas.core.interchange.dataframe_protocol import DataFrame
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.analytics.analytics_schemas import (
-    Message,
-)
+from src.api.chats.chats_schema import MessageSchema
 from src.llm.agents import (
     EDAgent
 )
+
+from src.api.chats.chats_methods import (
+    get_k_last_messages_from_chat,
+    add_message_from_chat, get_csv_by_id
+)
+
+
+UPLOAD_DIR = Path("../uploads")
 agent = EDAgent()
+
+
 def agent_processing(df) -> str:
-    '''возвращает статус процессинга (нужно или нет переспрашивать пользователя) и вопрос, интересуующий ллмку'''
     response = agent.invoke([SystemMessage(
         "Тебя зовут EDA_NA_DOM. Ты лучший аналитик данных и специалист в машинном обучении. Ответы присылай на русском языке!!!! Если вопрос слишком общий, то спроси какие-нибудь уточняющие детали."),
         HumanMessage("Сделай первичный анализ данных. Перечисли мне столбцы, их типы и количество наблюдений, предоставь общую информацию о представленных данных")], df)
     return response["answer"]
 
 
-def interact(context: list[Message], df: DataFrame) -> dict[str, list | str]:
-    latest_mes = context[-1] if context[-1].role == 'human' else context[-2]
-    # Wrap the message into a state dictionary for validation:
-    is_cool = agent.validate_prompt({"messages": [HumanMessage(latest_mes.text)]})
-    if not is_cool:
-        raise FastAPIHTTPException(status_code=404, detail="unhealthy behavior")
+async def interact(user_id: int, chat_id: int, message: str, db: AsyncSession) -> dict[str, list | str]:
+    # messages: list[MessageSchema] = await get_k_last_messages_from_chat(3, user_id,chat_id, db)
+    # is_cool = agent.validate_prompt({"messages": [HumanMessage(latest_mes.text)]})
+    # if not is_cool:
+    #     raise FastAPIHTTPException(status_code=404, detail="unhealthy behavior")
+    file_name = await get_csv_by_id(user_id, chat_id, db)
+    upload_path = UPLOAD_DIR / file_name
+    df = pd.read_csv(upload_path)
+    to_add = [MessageSchema(user_id=user_id, chat_id=chat_id, role="user", message_text=message, created_at=datetime.now())]
     response = agent.invoke([SystemMessage(
         "Тебя зовут EDA_NA_DOM. Ты лучший аналитик данных и специалист в машинном обучении. Ответы присылай на русском языке!!!"),
-        HumanMessage(latest_mes.text)],
+        HumanMessage(message),],
         df
     )
+    if response["answer"]:
+        ai_msg = MessageSchema(user_id=user_id, chat_id=chat_id, role="ai", message_text=response["answer"], created_at=datetime.now())
+        to_add.append(ai_msg)
+
+    await add_message_from_chat(to_add, db)
+
     print(response["answer"])
     final_response = {
         "plots": response.get("plots", []),

@@ -38,8 +38,6 @@ async def jwt_encode(payload: dict,
 async def jwt_decode(token: str,
                      public_key: str = settings.auth.public_key_path.read_text()
                      ) -> dict:
-    print(token)
-    print(public_key)
     return jwt.decode(token, public_key, algorithms=settings.auth.algorithm)
 
 

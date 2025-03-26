@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.analytics.analytics_router import analytics_router
 from src.api.auth.auth_routers import auth_router
+from src.api.chats.chats_routers import chats_router
 from src.database.database import create_tables
 
 app = FastAPI()
@@ -20,6 +21,7 @@ app.add_middleware(
 
 app.include_router(analytics_router)
 app.include_router(auth_router)
+app.include_router(chats_router)
 
 @app.on_event("startup")
 async def on_startup():
