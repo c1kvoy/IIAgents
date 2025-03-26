@@ -17,7 +17,7 @@ from src.api.analytics.analytics_methods import (
 from src.api.analytics.analytics_schemas import (
     Message
 )
-from src.api.auth.methods import authorize
+from src.api.auth.auth_routers import authorize
 
 analytics_router = APIRouter(dependencies=[Depends(authorize)])
 
