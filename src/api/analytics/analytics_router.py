@@ -50,20 +50,20 @@ async def post_interact_router(user_id_: int, chat_id: int, message_: str, db_ =
     return JSONResponse(content=response)
 
 
-@analytics_router.post('/get_file/')
-async def post_file_router(user_id, chat_id, db_ = Depends(get_async_session), validate_id: int = Depends(authorize)) -> FileResponse:
-    if user_id != validate_id:
-        raise FastAPIHTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user_id")
-    file_name = await get_csv_by_id(user_id, chat_id, db_)
+@analytics_router.post('/get_file')
+def post_file_router(file_name: str, validate_id: int = Depends(authorize)):
+    file_name = Path(file_name).name
+
     if file_name == '':
         raise FastAPIHTTPException(status_code=404, detail="No filename provided")
-
     supported_extensions = {
         '.csv': 'text/csv',
         '.png': 'image/png'
     }
-
     file_extension = Path(file_name).suffix.lower()
+
+    if file_extension not in supported_extensions:
+        raise FastAPIHTTPException(status_code=405, detail="File extension not supported")
 
     upload_path = UPLOAD_DIR / file_name
     if not upload_path.exists():
