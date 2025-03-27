@@ -11,6 +11,10 @@ class MessageSchema(BaseModel):
     message_text: str
     created_at: datetime
 
+class MessageOutSchema(BaseModel):
+    role: str
+    message_text: str
+
 class ChatSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int | None = None

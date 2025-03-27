@@ -24,7 +24,7 @@ UPLOAD_DIR = Path("../uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 
 @analytics_router.post('/file')
-async def post_file_router(user_id: int, chat_id: int, file: UploadFile = File(...), db_ = Depends(get_async_session)) -> JSONResponse:
+async def post_file_router(user_id: int, file: UploadFile = File(...), db_ = Depends(get_async_session)) -> JSONResponse:
     if file.filename == '':
         raise FastAPIHTTPException(status_code=404, detail="No filename provided")
     if file and not file.filename.endswith('.csv'):
@@ -35,8 +35,8 @@ async def post_file_router(user_id: int, chat_id: int, file: UploadFile = File(.
     print(df)
     df.to_csv(upload_path, index=False)
     response = agent_processing(df)
-    await add_chat(user_id, chat_id, file.filename, db_)
-    return JSONResponse(content={"answer": response, "file_id": file.filename})
+    chat_id = await add_chat(user_id, file.filename, db_)
+    return JSONResponse(content={"answer": response, "chat_id": chat_id})
 
 
 @analytics_router.post('/interact/')
