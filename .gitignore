@@ -177,3 +177,4 @@ src/uploads/
 .DS_Store__pycache__/
 .DS_Store
 /src/llm/test.ipynb.DS_Store
+/dirty_plots
