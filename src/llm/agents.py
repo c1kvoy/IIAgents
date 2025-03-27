@@ -46,8 +46,8 @@ class EDAgent:
         graph_builder.add_edge("ml_agent", END)
         graph_builder.add_edge("plot_agent", END)
         graph_builder.add_edge("consultant_agent", END)
-        self.plots_dir = "/content/plots"
-        self.dirty_plots_dir = "/content/dirty_plots_dir"
+        self.plots_dir = "../uploads"
+        self.dirty_plots_dir = "./dirty_plots"
 
         self.graph = graph_builder.compile()
 
