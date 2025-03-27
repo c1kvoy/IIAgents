@@ -26,7 +26,7 @@ async def authorize(token: str = Depends(oauth2_scheme), db_=Depends(database.ge
     await expire_validator(payload=payload)
     await type_validator(payload['type'], settings.auth.ACCESS_TOKEN_TYPE)
     user = await get_user_by_id(int(payload['sub']), db_)
-    return user.refresh_token
+    return user.id
 
 
 auth_router = APIRouter(tags=['auth'], prefix='/users/auth')
