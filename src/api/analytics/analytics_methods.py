@@ -29,9 +29,10 @@ def agent_processing(df) -> str:
 
 async def interact(user_id: int, chat_id: int, message: str, db: AsyncSession) -> dict[str, list | str]:
     # messages: list[MessageSchema] = await get_k_last_messages_from_chat(3, user_id,chat_id, db)
-    # is_cool = agent.validate_prompt({"messages": [HumanMessage(latest_mes.text)]})
-    # if not is_cool:
-    #     raise FastAPIHTTPException(status_code=404, detail="unhealthy behavior")
+    is_cool = agent.validate_prompt(message)
+    if not is_cool:
+        raise FastAPIHTTPException(status_code=404, detail="unhealthy behavior")
+
     file_name = await get_csv_by_id(user_id, chat_id, db)
     upload_path = UPLOAD_DIR / file_name
     df = pd.read_csv(upload_path)
