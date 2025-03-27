@@ -8,6 +8,11 @@ from src.api.chats.chats_schema import MessageSchema
 
 
 async def create_user(user, db_: AsyncSession):
+    existing_user = await db_.execute(select(models.UserModel).where(models.UserModel.email == user.email))
+    if existing_user.scalar():
+        raise fastapi_HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                              detail=f"User with email: {user.email} already exist")
+
     user = user.dict()
     user["hashed_password"] = await utils.hash_password(user["hashed_password"])
     user_in_db = models.UserModel(**user)
