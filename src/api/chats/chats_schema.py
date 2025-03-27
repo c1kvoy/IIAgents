@@ -21,3 +21,8 @@ class ChatSchema(BaseModel):
     chat_id: int
     user_id: int
     csv_name: str
+
+class ChatOutSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    chat_id: int
+    csv_name: str

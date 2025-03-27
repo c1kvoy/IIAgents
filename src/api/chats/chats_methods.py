@@ -1,4 +1,4 @@
-from src.api.chats.chats_schema import MessageSchema, ChatSchema, MessageOutSchema
+from src.api.chats.chats_schema import MessageSchema, ChatSchema, MessageOutSchema, ChatOutSchema
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from src.database import models
@@ -62,9 +62,9 @@ async def get_k_last_messages_from_chat(k_: int, user_id_: int, chat_id_: int, d
 
     return [MessageOutSchema.model_validate(msg, from_attributes=True) for msg in messages]
 
-async def get_all_chat(db_: AsyncSession) -> list[MessageSchema]:
-    q = select(models.MessageModel).order_by(models.MessageModel.chat_id)
+async def get_all_chats_by_id(user_id: int, db_: AsyncSession) -> list[ChatOutSchema]:
+    q = select(models.ChatModel).order_by(models.ChatModel.chat_id).where(models.ChatModel.user_id == user_id)
     data = await db_.execute(q)
     data = data.scalars().all()
-    print(data)
-    return [MessageSchema.model_validate(msg) for msg in data]
+    return [ChatOutSchema.model_validate(msg, from_attributes=True) for msg in data]
+
