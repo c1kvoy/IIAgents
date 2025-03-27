@@ -5,6 +5,7 @@ from fastapi import (
     UploadFile,
     File,
     Depends,
+    status
 )
 import io
 
@@ -18,13 +19,15 @@ from src.api.chats.chats_methods import add_chat, get_csv_by_id
 from src.database.database import get_async_session
 from src.api.auth.auth_routers import authorize
 
-analytics_router = APIRouter(dependencies=[Depends(authorize)])
+analytics_router = APIRouter()
 
 UPLOAD_DIR = Path("../uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 
 @analytics_router.post('/file')
-async def post_file_router(user_id: int, file: UploadFile = File(...), db_ = Depends(get_async_session)) -> JSONResponse:
+async def post_file_router(user_id: int, file: UploadFile = File(...), db_ = Depends(get_async_session), validate_id: int = Depends(authorize)) -> JSONResponse:
+    if user_id != validate_id:
+        raise FastAPIHTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user_id")
     if file.filename == '':
         raise FastAPIHTTPException(status_code=404, detail="No filename provided")
     if file and not file.filename.endswith('.csv'):
@@ -40,13 +43,17 @@ async def post_file_router(user_id: int, file: UploadFile = File(...), db_ = Dep
 
 
 @analytics_router.post('/interact/')
-async def post_interact_router(user_id_: int, chat_id: int, message_: str, db_ = Depends(get_async_session)) -> JSONResponse:
+async def post_interact_router(user_id_: int, chat_id: int, message_: str, db_ = Depends(get_async_session), validate_id: int = Depends(authorize)) -> JSONResponse:
+    if user_id_ != validate_id:
+        raise FastAPIHTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user_id")
     response = await interact(user_id_, chat_id, message_, db_)
     return JSONResponse(content=response)
 
 
 @analytics_router.post('/get_file/')
-async def post_file_router(user_id, chat_id, db_ = Depends(get_async_session)) -> FileResponse:
+async def post_file_router(user_id, chat_id, db_ = Depends(get_async_session), validate_id: int = Depends(authorize)) -> FileResponse:
+    if user_id != validate_id:
+        raise FastAPIHTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user_id")
     file_name = await get_csv_by_id(user_id, chat_id, db_)
     if file_name == '':
         raise FastAPIHTTPException(status_code=404, detail="No filename provided")
