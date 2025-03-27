@@ -22,7 +22,7 @@ class DbSettings(BaseSettings):
 class AuthSettings(BaseSettings):
     private_key_path: Path = BASE_DIR / "core" / "certs" / "jwt-private.pem"
     public_key_path: Path = BASE_DIR / "core" / "certs" / "jwt-public.pem"
-    expire_minutes: int = 15
+    expire_minutes: int = 100000
     expire_days: int = 7
     algorithm: str = "RS256"
     ACCESS_TOKEN_TYPE: str = "access"
