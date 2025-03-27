@@ -10,10 +10,11 @@ class MessageSchema(BaseModel):
     role: str
     message_text: str
     created_at: datetime
-
+    image: str | None = None
 class MessageOutSchema(BaseModel):
     role: str
     message_text: str
+    image: str | None = None
 
 class ChatSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)

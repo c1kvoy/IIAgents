@@ -31,3 +31,4 @@ class MessageModel(Base):
     created_at: Mapped[datetime] = mapped_column(default=datetime.now(), nullable=False)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     user: Mapped["UserModel"] = relationship("UserModel", back_populates="posts")
+    image: Mapped[str] = mapped_column(nullable=True)

@@ -61,11 +61,14 @@ async def interact(user_id: int, chat_id: int, message: str, db: AsyncSession) -
     ), HumanMessage(message)] , df)
 
     if response["answer"]:
-        ai_msg = MessageSchema(user_id=user_id, chat_id=chat_id, role="ai", message_text=response["answer"], created_at=datetime.now())
+        if response["plots"][0]:
+            ai_msg = MessageSchema(user_id=user_id, chat_id=chat_id, role="ai", message_text=response["answer"], created_at=datetime.now(), image=response['plots'][0])
+        else:
+            ai_msg = MessageSchema(user_id=user_id, chat_id=chat_id, role="ai", message_text=response["answer"],
+                                   created_at=datetime.now())
         to_add.append(ai_msg)
 
     await add_message_from_chat(to_add, db)
-
     print(response["answer"])
     final_response = {
         "plots": response.get("plots", []),
