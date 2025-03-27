@@ -29,11 +29,11 @@ def agent_processing(df) -> str:
 
 
 async def interact(user_id: int, chat_id: int, message: str, db: AsyncSession) -> dict[str, list | str]:
-    messages: list[MessageOutSchema] = await get_k_last_messages_from_chat(3, user_id, chat_id, db)
-    formatted_messages = [
-        AIMessage(msg.message_text) if msg.role == "ai" else HumanMessage(msg.message_text)
-        for msg in messages
-    ]
+    # messages: list[MessageOutSchema] = await get_k_last_messages_from_chat(3, user_id, chat_id, db)
+    # formatted_messages = [
+    #     AIMessage(msg.message_text) if msg.role == "ai" else HumanMessage(msg.message_text)
+    #     for msg in messages
+    # ]
 
     is_cool = agent.validate_prompt(message)
     if not is_cool:
@@ -55,11 +55,10 @@ async def interact(user_id: int, chat_id: int, message: str, db: AsyncSession) -
         )
     ]
 
-    formatted_messages.append(HumanMessage(message))
 
     response = agent.invoke([SystemMessage(
         "Тебя зовут EDA_NA_DOM. Ты лучший аналитик данных и специалист в машинном обучении. Ответы присылай на русском языке!!!"
-    )] + formatted_messages, df)
+    ), HumanMessage(message)] , df)
 
     if response["answer"]:
         ai_msg = MessageSchema(user_id=user_id, chat_id=chat_id, role="ai", message_text=response["answer"], created_at=datetime.now())
