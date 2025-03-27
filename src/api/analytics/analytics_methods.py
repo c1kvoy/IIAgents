@@ -39,8 +39,8 @@ async def interact(user_id: int, chat_id: int, message: str, db: AsyncSession) -
     if not is_cool:
         raise FastAPIHTTPException(status_code=404, detail="unhealthy behavior")
 
-    better_message = agent.get_prompt_better(message)
-
+    #better_message = agent.get_prompt_better(message)
+    print(agent.get_prompt_better(message))
     file_name = await get_csv_by_id(user_id, chat_id, db)
     upload_path = UPLOAD_DIR / file_name
     df = pd.read_csv(upload_path)
@@ -50,12 +50,12 @@ async def interact(user_id: int, chat_id: int, message: str, db: AsyncSession) -
             user_id=user_id,
             chat_id=chat_id,
             role="user",
-            message_text=better_message,
+            message_text=message,
             created_at=datetime.now()
         )
     ]
 
-    formatted_messages.append(HumanMessage(better_message))
+    formatted_messages.append(HumanMessage(message))
 
     response = agent.invoke([SystemMessage(
         "Тебя зовут EDA_NA_DOM. Ты лучший аналитик данных и специалист в машинном обучении. Ответы присылай на русском языке!!!"

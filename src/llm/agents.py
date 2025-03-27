@@ -9,8 +9,9 @@ from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, END, START
 from typing_extensions import TypedDict
+import re
 
-from utils import clean_code
+from src.llm.utils import clean_code
 
 load_dotenv()
 llm = ChatOpenAI(model="gpt-4o-mini")
@@ -255,7 +256,8 @@ class EDAgent:
     def __consultant_agent(self, state: AgentState):
         messages = state['messages']
         user_prompt = messages[-1].content
-        messages[-1] = HumanMessage(f"Дай ответ на следующий вопрос: {user_prompt}")
+        df = state["dataframe"]
+        messages[-1] = HumanMessage(f"Дай ответ на следующий вопрос: {user_prompt}, если посчитаешь нужным, используй следующий датасет: {df}")
         response = llm.invoke(messages).content
         return {"answer": response}
 
