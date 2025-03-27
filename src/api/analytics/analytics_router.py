@@ -39,7 +39,7 @@ async def post_file_router(user_id: int, file: UploadFile = File(...), db_ = Dep
     df.to_csv(upload_path, index=False)
     response = agent_processing(df)
     chat_id = await add_chat(user_id, file.filename, db_)
-    return JSONResponse(content={"answer": response, "chat_id": chat_id})
+    return JSONResponse(content={"answer": response, "file_name": file.filename,"chat_id": chat_id})
 
 
 @analytics_router.post('/interact/')
