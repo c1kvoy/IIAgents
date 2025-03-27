@@ -38,16 +38,6 @@ docker compose build
 docker compose up
 ```
 
-#### **Настройте окружение:**
-Скопируйте .env.example в .env:
-```bash
-cp .env.example .env
-```
-Откройте .env и укажите:
-- OPENAI_API_KEY=ваш_ключ
-- DATABASE_URL=postgresql://user:pass@db:5432/iiagents
-
-
 ### Требования к данным
 
 InsightFlow может обрабатывать только CSV-файлы размером до 5 МБ.
