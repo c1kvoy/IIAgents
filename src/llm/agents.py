@@ -14,7 +14,7 @@ import re
 from src.llm.utils import clean_code
 
 load_dotenv()
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+llm = ChatOpenAI(model="gpt-4o", temperature=0)
 
 
 class AgentState(TypedDict):
