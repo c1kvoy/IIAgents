@@ -71,7 +71,7 @@ async def interact(model: str, user_id: int, chat_id: int, message: str, db: Asy
         ), HumanMessage(message)], df)
 
     if response["answer"]:
-        if response['plots'] and response["plots"][0]:
+        if "plots" in response and response["plots"][0]:
             ai_msg = MessageSchema(user_id=user_id, chat_id=chat_id, role="ai", message_text=response["answer"], created_at=datetime.now(), image=response['plots'][0])
         else:
             ai_msg = MessageSchema(user_id=user_id, chat_id=chat_id, role="ai", message_text=response["answer"],
