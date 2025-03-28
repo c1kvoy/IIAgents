@@ -15,6 +15,7 @@ from src.api.analytics.analytics_methods import (
     agent_processing,
     interact
 )
+from src.api.analytics.analytics_schemas import Message
 from src.api.chats.chats_methods import add_chat, get_csv_by_id
 from src.database.database import get_async_session
 from src.api.auth.auth_routers import authorize
@@ -44,10 +45,10 @@ async def post_file_router(user_id: int, file: UploadFile = File(...), db_ = Dep
 
 
 @analytics_router.post('/interact/')
-async def post_interact_router(user_id_: int, chat_id: int, message_: str, model: str, db_ = Depends(get_async_session), validate_id: int = Depends(authorize)) -> JSONResponse:
+async def post_interact_router(user_id_: int, chat_id: int, message_: Message, model: str, db_ = Depends(get_async_session), validate_id: int = Depends(authorize)) -> JSONResponse:
     if user_id_ != validate_id:
         raise FastAPIHTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user_id")
-    response = await interact(model,user_id_, chat_id, message_, db_)
+    response = await interact(model,user_id_, chat_id, message_.text, db_)
     return JSONResponse(content=response)
 
 

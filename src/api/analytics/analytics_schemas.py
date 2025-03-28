@@ -7,5 +7,5 @@ class Analytics(BaseModel):
     etc: str | int | float
 
 class Message(BaseModel):
-    role: str
     text: str
+
