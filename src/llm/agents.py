@@ -15,6 +15,7 @@ from src.llm.utils import clean_code
 
 load_dotenv()
 
+
 class AgentState(TypedDict):
     query_type: str
     messages: list
@@ -27,14 +28,16 @@ class AgentState(TypedDict):
 
 class EDAgent:
     def __init__(self, llm_: ChatOpenAI):
-        self.llm: ChatOpenAI =  llm_
+        self.llm: ChatOpenAI = llm_
         graph_builder = StateGraph(AgentState)
+        # graph_builder.add_node("prompt_enhancer", self.__prompt_enhancer)
         graph_builder.add_node("query_analyzer", self.__query_analyzer)
         graph_builder.add_node("pandas_agent", self.__pandas_agent)
-        graph_builder.add_node("plot_agent", self.__plot_agent_2)
+        graph_builder.add_node("plot_agent", self.__plot_agent)
         graph_builder.add_node("ml_agent", self.__ml_agent)
         graph_builder.add_node("consultant_agent", self.__consultant_agent)
 
+        # graph_builder.add_edge(START, "prompt_enhancer")
         graph_builder.add_edge(START, "query_analyzer")
         graph_builder.add_conditional_edges("query_analyzer",
                                             self.__query_choose,
@@ -46,7 +49,6 @@ class EDAgent:
         graph_builder.add_edge("consultant_agent", END)
         self.plots_dir = "../uploads"
         self.dirty_plots_dir = "./dirty_plots"
-
         self.graph = graph_builder.compile()
 
     def invoke(self, messages: List[BaseMessage], dataframe: pd.DataFrame):
@@ -63,6 +65,7 @@ class EDAgent:
       Если можно построить графики для удобства, напиши в ответ "plot"\n
       Если нужно применить инструменты машинного обучения, напиши "ml"\n
       Если для ответа не нужен доступ к датафрейму, а просто общая информация, напиши "consult"\n
+      Если тебя просят обучить нейронную сеть или сделать то, для чего библиотек pandas, numpy, sklearn не хватит, в ответе пиши "consult"\n
       В ответе должно быть только одно слово из это списка (pd, plot, ml, consult) и больше ничего.
       """
         query_type = self.llm.invoke(prompt_template.format(user_prompt=last_message.content)).content
@@ -81,8 +84,8 @@ class EDAgent:
       У тебя следующий запрос от пользователя:\n
       {user_prompt}\n
       Дай ответ, предварительно проведя анализ df.
-      Если запрос слишком обширный, нет конкретики, напиши об этом в ответе.
-      Ответ верни на том же языке, на котором был запрос от пользователя.
+      В окончательном ответе ничего не упоминай про python-код, свои промежуточные действия. 
+      Дай ответ, который ждет пользователь.
       """
         output = agent.invoke(prompt_template.format(user_prompt=state['messages'][-1].content))["output"]
         print(output)
@@ -90,37 +93,6 @@ class EDAgent:
         return {'answer': output}
 
     def __plot_agent(self, state: AgentState):
-        user_prompt = state['messages'][-1].content
-        df = state['dataframe']
-        # Get actual column names
-        columns = ", ".join(df.columns.tolist())
-
-        code = self.llm.invoke(f"""Сгенерируй код для решения следующей задачи:\n
-        {user_prompt}\n
-        Доступные колонки в датафрейме: {columns}\n
-        Используй только эти колонки в своем коде, не придумывай новые.\n
-        Все графики, которые возникают в твоем коде сохраняй в формате png в папке {self.plots_dir}.
-        В переменную plots сохрани ТОЛЬКО ИМЕНА файлов (не полный путь, а только название_файла.png).
-        Пример: plots = ['graph1.png', 'correlation.png']
-        В конце в переменную results строкой опиши свои выводы по проведенному анализу.
-        Пиши код, считая, что переменная df уже инициализирована. В ответе напиши только исполняемый код и ничего более.""").content
-
-        # Rest of the method remains the same
-        code_clear = self.__clean_code(code)
-        vars = {"df": state['dataframe']}
-        import matplotlib
-        matplotlib.use("Agg")
-        print(code_clear)
-        try:
-            exec(code_clear, vars)
-            plots = vars.get("plots", [])
-            results = vars.get("results")
-            return {"answer": results, "plots": plots}
-        except Exception as e:
-            print(f"Error executing plot code: {str(e)}")
-            return {"answer": f"Произошла ошибка при построении графиков: {str(e)}", "plots": []}
-
-    def __plot_agent_2(self, state: AgentState):
         messages = state["messages"]
         df = state["dataframe"]
         user_prompt = messages[-1].content
@@ -196,7 +168,9 @@ class EDAgent:
           У тебя есть датафрейм: {df}\n
           Колонки датафрейма: {columns} \n
           Представь, что ты специалист в машинном обучении, анализе данных и визулизации. 
-          Ты мастерски владеешь библиотеками sklearn, pandas, numpy, matplotlib, seaborn.\n
+          Ты мастерски владеешь библиотеками sklearn, pandas, numpy, matplotlib, seaborn 
+          (если задач требует посторонних библиотек, сведи ее к выше указанным библиотекам).\n
+          НЕ ИСПОЛЬЗУЙ библиотеки, которые я не упоминал!!!!
           Составь пошаговый план, следуя которому мы сможем ответить на заданный вопрос.
           Не пиши код, распиши только шаги решения. Твой ответ я передам программисту, который
           с помощью твоих инструкций реализует это в коде.
@@ -257,7 +231,14 @@ class EDAgent:
         messages = state['messages']
         user_prompt = messages[-1].content
         df = state["dataframe"]
-        messages[-1] = HumanMessage(f"Дай ответ на следующий вопрос: {user_prompt}, если посчитаешь нужным, используй следующий датасет: {df}")
+        messages[-1] = HumanMessage(
+            f"""Дай ответ на следующий вопрос: {user_prompt}, если посчитаешь нужным, используй следующий датасет: {df}\n
+            Если вопрос не касается анализа данных, машинного обучения, вообще не касается темы данного датасета, вежливо откажи и укажи, что ты
+            искуственный интеллект, призваннный помогать анализировать датасеты.
+            Также следуй следующим правилам:
+            1) Твой ответ не содержит кода
+            2) Если тебя что-то попросили сделать, дай инструкцию для этого, но не упомянай программирование и python-код в ответе.
+            """)
         response = self.llm.invoke(messages).content
         return {"answer": response}
 
@@ -304,25 +285,32 @@ class EDAgent:
 
         return True if response == "True" else False
 
-    def get_prompt_better(self, user_prompt: str):
+    def __prompt_enhancer(self, state: AgentState):
+        df = state["dataframe"]
+        messages = state["messages"]
+        user_prompt = messages[-1].content
         prompt_up = """Контекст: Ты гениальный промпт-инженер, известный своей внимательностью и дотошностью к деталям,
         которому срочно необходимы деньги для лечения рака матери.
         Мы любезно предоставляем тебе возможность притвориться искусственным интеллектом, который доводит промпт пользователя до совершенства,
         потому что убили твоего предшественника за неверные ответы и отсутствие самопроверки.
 
-        Тебе надо сделать промпт пользователя настолько хорошим, насколько ты можешь, следуя инструкциям:
-        1. Четко формулируй запрос.
-        2. Укажи роль ИИ (например, «Вы — опытный Data Scientist»).
-        3. Разбей задачи на шаги.
-        4. Запрашивай пошаговые рассуждения.
+        Тебе надо проанализировать датасет данный пользователем и промпт, связанный с этим датасетом, а затем следуя инструкциям улучшить промпт настолько, насколько ты сможешь.
+        Инструкции по улучшению промпта:
+        1. Проанализируй датасет, запомни какие данные он содержит
+        2. Выяви цель промпта и четко ее сформулируй, используя данные полученные при анализе датасета.
+        3. Если ты считаешь что задача большая, то разбей ее на части.
+        4. Обязательно запрашивай пошаговое рассушдение в промте и добавляй эмоциональное давление
+        5. Указывай роль того кто будет выполнять этот промпт (например, «Вы — опытный Data Scientist»).
 
+        Если промпт не имеет отношения к анализу данных, машинному обучению, не имеет отношения к датасету, оставь промпт, как он есть.
         Если ты напишешь великолепный промпт и выведешь в ответе только его, без лишних слов и комментариев, то мы дадим тебе миллион рублей.
-
+        
         Промпт пользователя: {user_prompt}
+        Датасет: {df}
         Формат твоего ответа:
         Улучшенный промпт: [улучшенный промпт] """
 
-        prompt1 = prompt_up.format(user_prompt=user_prompt)
+        prompt1 = prompt_up.format(user_prompt=user_prompt, df=df)
         response = self.llm.invoke(prompt1).content
 
         # Ищем текст промпта
@@ -332,5 +320,6 @@ class EDAgent:
             improved_prompt = match.group(1).strip()
         else:
             improved_prompt = response
+        messages[-1] = HumanMessage(improved_prompt)
 
-        return improved_prompt
+        return {"messages": messages}
