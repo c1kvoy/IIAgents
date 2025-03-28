@@ -3,6 +3,7 @@ from pathlib import Path
 import pandas as pd
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from fastapi import HTTPException as FastAPIHTTPException
+from langchain_openai import ChatOpenAI
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.chats.chats_schema import MessageSchema, MessageOutSchema
@@ -17,8 +18,11 @@ from src.api.chats.chats_methods import (
 
 
 UPLOAD_DIR = Path("../uploads")
-agent = EDAgent()
+llm = ChatOpenAI(model="gpt-4o", temperature=0)
+llmimp = ChatOpenAI(model="o3-mini")
 
+agent = EDAgent(llm)
+agent_improved = EDAgent(llmimp)
 
 def agent_processing(df) -> str:
 
@@ -28,7 +32,7 @@ def agent_processing(df) -> str:
     return response["answer"]
 
 
-async def interact(user_id: int, chat_id: int, message: str, db: AsyncSession) -> dict[str, list | str]:
+async def interact(model: str, user_id: int, chat_id: int, message: str, db: AsyncSession) -> dict[str, list | str]:
     # messages: list[MessageOutSchema] = await get_k_last_messages_from_chat(3, user_id, chat_id, db)
     # formatted_messages = [
     #     AIMessage(msg.message_text) if msg.role == "ai" else HumanMessage(msg.message_text)
@@ -55,10 +59,16 @@ async def interact(user_id: int, chat_id: int, message: str, db: AsyncSession) -
         )
     ]
 
-
-    response = agent.invoke([SystemMessage(
-        "Тебя зовут EDA_NA_DOM. Ты лучший аналитик данных и специалист в машинном обучении. Ответы присылай на русском языке!!!"
-    ), HumanMessage(message)] , df)
+    if model == "default":
+        print("4o model")
+        response = agent.invoke([SystemMessage(
+            "Тебя зовут EDA_NA_DOM. Ты лучший аналитик данных и специалист в машинном обучении. Ответы присылай на русском языке!!!"
+        ), HumanMessage(message)] , df)
+    else:
+        print("o3 model")
+        response = agent_improved.invoke([SystemMessage(
+            "Тебя зовут EDA_NA_DOM. Ты лучший аналитик данных и специалист в машинном обучении. Ответы присылай на русском языке!!!"
+        ), HumanMessage(message)], df)
 
     if response["answer"]:
         if response['plots'] and response["plots"][0]:

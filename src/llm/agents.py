@@ -14,8 +14,6 @@ import re
 from src.llm.utils import clean_code
 
 load_dotenv()
-llm = ChatOpenAI(model="gpt-4o", temperature=0)
-
 
 class AgentState(TypedDict):
     query_type: str
@@ -28,7 +26,8 @@ class AgentState(TypedDict):
 
 
 class EDAgent:
-    def __init__(self):
+    def __init__(self, llm_: ChatOpenAI):
+        self.llm: ChatOpenAI =  llm_
         graph_builder = StateGraph(AgentState)
         graph_builder.add_node("query_analyzer", self.__query_analyzer)
         graph_builder.add_node("pandas_agent", self.__pandas_agent)
@@ -66,13 +65,13 @@ class EDAgent:
       Если для ответа не нужен доступ к датафрейму, а просто общая информация, напиши "consult"\n
       В ответе должно быть только одно слово из это списка (pd, plot, ml, consult) и больше ничего.
       """
-        query_type = llm.invoke(prompt_template.format(user_prompt=last_message.content)).content
+        query_type = self.llm.invoke(prompt_template.format(user_prompt=last_message.content)).content
         print(query_type)
         return {'query_type': query_type}
 
     def __pandas_agent(self, state: AgentState):
         agent = create_pandas_dataframe_agent(
-            llm,
+            self.llm,
             state["dataframe"],
             agent_type="tool-calling",
             verbose=True,
@@ -96,7 +95,7 @@ class EDAgent:
         # Get actual column names
         columns = ", ".join(df.columns.tolist())
 
-        code = llm.invoke(f"""Сгенерируй код для решения следующей задачи:\n
+        code = self.llm.invoke(f"""Сгенерируй код для решения следующей задачи:\n
         {user_prompt}\n
         Доступные колонки в датафрейме: {columns}\n
         Используй только эти колонки в своем коде, не придумывай новые.\n
@@ -136,7 +135,7 @@ class EDAgent:
       Не пиши код, распиши только шаги решения. Твой ответ я передам программисту, который
       с помощью твоих инструкций реализует это в коде.
       """)
-        chain = prompt_template_instruction | llm
+        chain = prompt_template_instruction | self.llm
         instructions = chain.invoke({"user_prompt": user_prompt, "df": df, "columns": df.columns}).content
         prompt_template_code = PromptTemplate.from_template("""
       Ты мастерски владеешь библиотеками pandas, numpy, matplotlib, seaborn.
@@ -154,7 +153,7 @@ class EDAgent:
       (то есть каждую переменную, которая важана для анализа ты должен описать словами).
       В ответе пришли только код, который можно сразу запустить.
       """)
-        chain = prompt_template_code | llm | clean_code
+        chain = prompt_template_code | self.llm | clean_code
         code = chain.invoke({"user_prompt": user_prompt,
                              "df": df,
                              "columns": df.columns,
@@ -183,7 +182,7 @@ class EDAgent:
       Исходя из этих значений, ответь на вопрос пользователя (твой ответ пойдет непосредственно пользователю).
       В ответе не отсылайся к python-коду. Сделай только вывод.
       """)
-        chain = prompt_template_answer | llm
+        chain = prompt_template_answer | self.llm
         answer = chain.invoke({"user_prompt": user_prompt, "df": df, "vars": vars, "data": data}).content
         plots_paths = self.__save_plots(plots)
         return {"answer": answer, "plots": plots_paths}
@@ -202,7 +201,7 @@ class EDAgent:
           Не пиши код, распиши только шаги решения. Твой ответ я передам программисту, который
           с помощью твоих инструкций реализует это в коде.
           """)
-        chain = prompt_template_instruction | llm
+        chain = prompt_template_instruction | self.llm
         instructions = chain.invoke({"user_prompt": user_prompt, "df": df, "columns": df.columns}).content
         prompt_template_code = PromptTemplate.from_template("""
           Ты мастерски владеешь библиотеками sklearn, pandas, numpy, matplotlib, seaborn.
@@ -220,7 +219,7 @@ class EDAgent:
           (то есть каждую переменную, которая важана для анализа ты должен описать словами).
           В ответе пришли только код, который можно сразу запустить.
           """)
-        chain = prompt_template_code | llm | clean_code
+        chain = prompt_template_code | self.llm | clean_code
         code = chain.invoke({"user_prompt": user_prompt,
                              "df": df,
                              "columns": df.columns,
@@ -249,7 +248,7 @@ class EDAgent:
       Исходя из этих значений, ответь на вопрос пользователя (твой ответ пойдет непосредственно пользователю).
       В ответе не отсылайся к python-коду. Сделай только вывод.
       """)
-        chain = prompt_template_answer | llm
+        chain = prompt_template_answer | self.llm
         answer = chain.invoke({"user_prompt": user_prompt, "df": df, "vars": vars, "data": data}).content
         plots_paths = self.__save_plots(plots)
         return {"answer": answer, "plots": plots_paths}
@@ -259,7 +258,7 @@ class EDAgent:
         user_prompt = messages[-1].content
         df = state["dataframe"]
         messages[-1] = HumanMessage(f"Дай ответ на следующий вопрос: {user_prompt}, если посчитаешь нужным, используй следующий датасет: {df}")
-        response = llm.invoke(messages).content
+        response = self.llm.invoke(messages).content
         return {"answer": response}
 
     def __query_choose(self, state: AgentState):
@@ -301,7 +300,7 @@ class EDAgent:
 
         """
 
-        response = llm.invoke(prompt_template.format(user_prompt=message)).content
+        response = self.llm.invoke(prompt_template.format(user_prompt=message)).content
 
         return True if response == "True" else False
 
@@ -324,7 +323,7 @@ class EDAgent:
         Улучшенный промпт: [улучшенный промпт] """
 
         prompt1 = prompt_up.format(user_prompt=user_prompt)
-        response = llm.invoke(prompt1).content
+        response = self.llm.invoke(prompt1).content
 
         # Ищем текст промпта
         match = re.search(r'Улучшенный промпт: \s*(.*)', response, re.DOTALL)
