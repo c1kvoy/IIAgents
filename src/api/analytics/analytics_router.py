@@ -37,8 +37,9 @@ async def post_file_router(user_id: int, file: UploadFile = File(...), db_ = Dep
     df = pd.read_csv(io.BytesIO(file.file.read()))
     print(df)
     df.to_csv(upload_path, index=False)
-    response = agent_processing(df)
+
     chat_id = await add_chat(user_id, file.filename, db_)
+    response = await agent_processing(user_id, chat_id, df, db_)
     return JSONResponse(content={"answer": response, "file_name": file.filename,"chat_id": chat_id})
 
 

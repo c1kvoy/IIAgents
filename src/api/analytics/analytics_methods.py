@@ -24,11 +24,22 @@ llmimp = ChatOpenAI(model="o3-mini")
 agent = EDAgent(llm)
 agent_improved = EDAgent(llmimp)
 
-def agent_processing(df) -> str:
+async def agent_processing(user_id, chat_id, df, db) -> str:
 
     response = agent.invoke([SystemMessage(
         "Тебя зовут EDA_NA_DOM. Ты лучший аналитик данных и специалист в машинном обучении. Ответы присылай на русском языке!!!! Если вопрос слишком общий, то спроси какие-нибудь уточняющие детали."),
         HumanMessage("Сделай первичный анализ данных. Перечисли мне столбцы, их типы и количество наблюдений, предоставь общую информацию о представленных данных")], df)
+    if "answer" in response:
+        to_add = [
+            MessageSchema(
+                user_id=user_id,
+                chat_id=chat_id,
+                role="ai",
+                message_text=response["answer"],
+                created_at=datetime.now()
+            )
+        ]
+        await add_message_from_chat(to_add, db)
     return response["answer"]
 
 
