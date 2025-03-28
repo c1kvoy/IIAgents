@@ -49,7 +49,9 @@ async def login_router(form: OAuth2PasswordRequestForm = Depends(), db_=Depends(
     access_token = await create_access_token(payload)
     db_.add(user_from_db)
     await db_.commit()
+    await db_.refresh(user_from_db)
     return {
         'access_token': access_token,
         'token_type': 'bearer',
+        'user_id': user_from_db.id,
     }
