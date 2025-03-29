@@ -4,8 +4,9 @@ services:
   app:
     build: .
     container_name: iiagents-app
+    restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
       - .:/IIAgents
     environment:
@@ -23,13 +24,14 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: iiagents-postgres
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5432:5432"  # Only allow local connections
     environment:
       - DB_SKIP_CREATE_IF_EXISTS=true
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=iiagents
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
