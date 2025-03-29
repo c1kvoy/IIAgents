@@ -29,12 +29,14 @@ class AgentState(TypedDict):
     code_with_error: str
     code_error: Exception
     instructions: str
+    retries: int
 
 
 class EDAgent:
-    def __init__(self, llm_: ChatOpenAI, msg_memory: int = 3):
+    def __init__(self, llm_: ChatOpenAI, msg_memory: int = 3, max_retries: int = 5):
         self.llm: ChatOpenAI = llm_
         self.msg_memory = msg_memory
+        self.max_retries = max_retries
         graph_builder = StateGraph(AgentState)
         graph_builder.add_node("query_analyzer", self.__query_analyzer)
         graph_builder.add_node("pandas_agent", self.__pandas_agent)
@@ -54,7 +56,8 @@ class EDAgent:
         graph_builder.add_conditional_edges("plot_agent", self.__error_detector,
                                             {"code_refactoring_agent": "code_refactoring_agent", "END": END})
         graph_builder.add_edge("consultant_agent", END)
-        graph_builder.add_edge("code_refactoring_agent", END)
+        graph_builder.add_conditional_edges("code_refactoring_agent", self.__continue_refactoring,
+                                            {"END": END, "code_refactoring_agent": "code_refactoring_agent"})
         self.plots_dir = "../uploads"
         self.dirty_plots_dir = "./dirty_plots"
         self.graph = graph_builder.compile()
@@ -70,17 +73,18 @@ class EDAgent:
       {user_prompt}\n
       Определи, что нужно, чтобы ответить на заданный вопрос.\n
       Если можно ограничиться только pandas, в ответ напиши "pd"\n
-      Если можно построить графики для удобства, напиши в ответ "plot"\n
+      Если можно построить графики для удобства или пользователь просит графики, напиши в ответ "plot"\n
       Если нужно применить инструменты машинного обучения, напиши "ml"\n
       Если для ответа не нужен доступ к датафрейму (то есть, чтобы выполнить запрос пользователя не нужно выполнять расчеты в датафрейме),
       а нужна просто общая информация, напиши "consult" (ЕСЛИ ДЛЯ ОТВЕТА НУЖНО АНАЛИЗИРОВАТЬ ДАННЫЕ В ДАТАФРЕЙМЕ, 
-      не пиши "consult", выбери что-то другое"\n
+      не пиши "consult", выбери что-то другое, также подумай, может пользователь действительно спрашивает про датафрейм, 
+      переводи названия колонок на русский язык, чтобы в этом убедиться)\n
       Если тебя просят обучить нейронную сеть или сделать то, для чего библиотек pandas, numpy, sklearn не хватит, в ответе пиши "consult"\n
       В ответе должно быть только одно слово из это списка (pd, plot, ml, consult) и больше ничего.
       """
         query_type = self.llm.invoke(prompt_template.format(user_prompt=last_message.content)).content
         logger.info(f"Тип запроса: {query_type}")
-        return {'query_type': query_type}
+        return {"query_type": query_type}
 
     def __pandas_agent(self, state: AgentState):
         messages = state["messages"]
@@ -114,7 +118,7 @@ class EDAgent:
       Пользователь отправил следующий запрос:\n
       {user_prompt}\n
       У тебя есть датафрейм: {df}\n
-      Колонки датафрейма: {columns} \n
+      Колонки и типы колонок датафрейма: {columns} \n
       Представь, что ты специалист в анализе данных и их визуализации. 
       Ты мастерски владеешь библиотеками pandas, numpy, matplotlib, seaborn.\n
       Составь пошаговый план, следуя которому мы сможем ответить на заданный вопрос.
@@ -144,7 +148,7 @@ class EDAgent:
             lambda response: response.replace("```python", "").replace("```", ""))
         code = chain.invoke({"user_prompt": user_prompt,
                              "df": df,
-                             "columns": df.columns,
+                             "columns": df.dtypes,
                              "instructions": instructions,
                              "dirty_plots_dir": self.dirty_plots_dir})
         logger.info(f"Plot_agent сгенерировал следующий код: \n{code}")
@@ -160,7 +164,8 @@ class EDAgent:
             return {
                 "code_error": e,
                 "code_with_error": code,
-                "instructions": instructions
+                "instructions": instructions,
+                "retries": 1
             }
 
         prompt_template_answer = PromptTemplate.from_template("""
@@ -185,7 +190,7 @@ class EDAgent:
           Пользователь отправил следующий запрос:\n
           {user_prompt}\n
           У тебя есть датафрейм: {df}\n
-          Колонки датафрейма: {columns} \n
+          Колонки и типы колонок датафрейма: {columns} \n
           Представь, что ты специалист в машинном обучении, анализе данных и визулизации. 
           Ты мастерски владеешь библиотеками sklearn, pandas, numpy, matplotlib, seaborn 
           (если задач требует посторонних библиотек, сведи ее к выше указанным библиотекам).\n
@@ -217,7 +222,7 @@ class EDAgent:
             lambda response: response.replace("```python", "").replace("```", ""))
         code = chain.invoke({"user_prompt": user_prompt,
                              "df": df,
-                             "columns": df.columns,
+                             "columns": df.dtypes,
                              "instructions": instructions,
                              "dirty_plots_dir": self.dirty_plots_dir})
         logger.info(f"ML_agent сгенерировал следующий код: \n{code}")
@@ -233,7 +238,8 @@ class EDAgent:
             return {
                 "code_error": e,
                 "code_with_error": code,
-                "instructions": instructions
+                "instructions": instructions,
+                "retries": 1
             }
 
         prompt_template_answer = PromptTemplate.from_template("""
@@ -256,7 +262,7 @@ class EDAgent:
         user_prompt = messages[-1].content
         df = state["dataframe"]
         messages[-1] = HumanMessage(
-            f"""Дай ответ на следующий вопрос: {user_prompt}, если посчитаешь нужным, используй следующий датасет: {df}\n
+            """Дай ответ на следующий вопрос: {user_prompt}, если посчитаешь нужным, используй следующий датасет: {df}\n
             Если вопрос не касается анализа данных, машинного обучения, вообще не касается темы данного датасета, вежливо откажи и укажи, что ты
             искуственный интеллект, призваннный помогать анализировать датасеты.
             Также следуй следующим правилам:
@@ -267,14 +273,19 @@ class EDAgent:
         return {"answer": response}
 
     def __code_refactoring_agent(self, state: AgentState):
+        df = state["dataframe"]
         messages = state["messages"]
         user_prompt = messages[-1].content
         code_with_error = state["code_with_error"]
         code_error = state["code_error"]
         instructions = state["instructions"]
-        prompt_template = PromptTemplate.from_template(f"""
+        prompt_template = PromptTemplate(template="""
         Пользователь отправил следующий запрос:\n
         {user_prompt}\n
+        У меня есть следующий датафрейм:\n
+        {df}\n
+        Колонки и типы колонок датафрейма:\n
+        {columns}\n
         Мне дали такие инструкции:\n
         {instructions}\n
         Я написал такой python-код:\n
@@ -283,11 +294,16 @@ class EDAgent:
         {code_error}\n
         Из-за этого мне очень грустно и тяжело. Пожалуйста, подними мне настроение и напиши в ответе исправный код.
         Твой ответ должен содержать только исправный код, который я могу сразу  же запустить без каких-либо изменений.
-        """)
+        """, input_variables=["user_prompt", "instructions", "code_with_error", "code_error", "df", "columns"])
         chain = prompt_template | self.llm | StrOutputParser() | (
             lambda response: response.replace("```python", "").replace("```", ""))
         code = chain.invoke(
-            {"instructions": instructions, "code_with_error": code_with_error, "code_error": code_error})
+            {"instructions": instructions,
+             "code_with_error": code_with_error,
+             "code_error": code_error,
+             "user_prompt": user_prompt,
+             "df": df,
+             "columns": df.dtypes})
         logger.info(f"Code_refactoring_agent сгенерировал следующий код: \n{code}")
         df = state["dataframe"]
         data = {}
@@ -298,9 +314,18 @@ class EDAgent:
             data = vars["data"]
             plots = vars["plots"]
         except Exception as e:
-            logger.info(f"Словили ошибку в рефакторе: {e}")
-            return {
-                "answer": "Извините, во время анализа произошла техническая ошибка, попробуйте ввести запрос снова."}
+            retries = state["retries"] + 1
+            logger.info(f"Словили ошибку в рефакторе на повторе {retries}: {e}")
+            if retries < self.max_retries:
+                return {
+                    "code_error": e,
+                    "code_with_error": code,
+                    "retries": retries}
+            else:
+                return {
+                    "answer": "Извините, это задание пока слишком сложное для меня, но в будущем я обязательно научусь "
+                              "помогать вам в этих вопросах!"
+                }
         prompt_template_answer = PromptTemplate.from_template("""
               Пользователь отправил следующий запрос:\n
               {user_prompt}\n
@@ -330,6 +355,12 @@ class EDAgent:
         if "code_error" in state:
             return "code_refactoring_agent"
         return "END"
+
+    def __continue_refactoring(self, state: AgentState):
+        if "answer" in state:
+            return "END"
+        else:
+            return "code_refactoring_agent"
 
     def __save_plots(self, plots: list) -> list:
         plots_names = []

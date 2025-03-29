@@ -178,3 +178,5 @@ src/uploads/
 .DS_Store
 /src/llm/test.ipynb.DS_Store
 /dirty_plots
+/src/llm/test.ipynb
+/src/llm/titanic.csv
