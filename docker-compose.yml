@@ -26,7 +26,7 @@ services:
     container_name: iiagents-postgres
     restart: unless-stopped
     ports:
-      - "127.0.0.1:5432:5432"  # Only allow local connections
+      - "127.0.0.1:5432:5432"
     environment:
       - DB_SKIP_CREATE_IF_EXISTS=true
       - POSTGRES_USER=postgres
