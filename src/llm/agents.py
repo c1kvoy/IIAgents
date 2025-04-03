@@ -62,11 +62,11 @@ class EDAgent:
         self.dirty_plots_dir = "./dirty_plots"
         self.graph = graph_builder.compile()
 
-    def invoke(self, messages: List[BaseMessage], dataframe: pd.DataFrame):
+    async def ainvoke(self, messages: List[BaseMessage], dataframe: pd.DataFrame):
         logger.info(f"Поступил следующий запрос от пользователя: \n{messages[-1].content}")
-        return self.graph.invoke({"dataframe": dataframe, "messages": messages})
+        return await self.graph.ainvoke({"dataframe": dataframe, "messages": messages})
 
-    def __query_analyzer(self, state: AgentState):
+    async def __query_analyzer(self, state: AgentState):
         last_message = state["messages"][-1]
         prompt_template = """
       У тебя есть следующий запрос от пользователя:\n
@@ -82,11 +82,11 @@ class EDAgent:
       Если тебя просят обучить нейронную сеть или сделать то, для чего библиотек pandas, numpy, sklearn не хватит, в ответе пиши "consult"\n
       В ответе должно быть только одно слово из это списка (pd, plot, ml, consult) и больше ничего.
       """
-        query_type = self.llm.invoke(prompt_template.format(user_prompt=last_message.content)).content
+        query_type = (await self.llm.ainvoke(prompt_template.format(user_prompt=last_message.content))).content
         logger.info(f"Тип запроса: {query_type}")
         return {"query_type": query_type}
 
-    def __pandas_agent(self, state: AgentState):
+    async def __pandas_agent(self, state: AgentState):
         messages = state["messages"]
         user_prompt = messages[-1].content
         agent = create_pandas_dataframe_agent(
@@ -104,13 +104,13 @@ class EDAgent:
       """)
         messages[-1] = HumanMessage(prompt_template.format(user_prompt=user_prompt))
         if self.msg_memory < len(messages):
-            answer = agent.invoke(messages[-self.msg_memory:])["output"]
+            answer = (await agent.ainvoke(messages[-self.msg_memory:]))["output"]
         else:
-            answer = agent.invoke(messages)["output"]
+            answer = (await agent.ainvoke(messages))["output"]
         messages.append(AIMessage(answer))
         return {'answer': answer, "messages": messages}
 
-    def __plot_agent(self, state: AgentState):
+    async def __plot_agent(self, state: AgentState):
         messages = state["messages"]
         df = state["dataframe"]
         user_prompt = messages[-1].content
@@ -126,7 +126,7 @@ class EDAgent:
       с помощью твоих инструкций реализует это в коде.
       """)
         chain = prompt_template_instruction | self.llm
-        instructions = chain.invoke({"user_prompt": user_prompt, "df": df, "columns": df.columns}).content
+        instructions = (await chain.ainvoke({"user_prompt": user_prompt, "df": df, "columns": df.columns})).content
         logger.info(f"Plot_agent сгенерировал следующие инструкции: \n{instructions}")
         prompt_template_code = PromptTemplate.from_template("""
       Ты мастерски владеешь библиотеками pandas, numpy, matplotlib, seaborn.
@@ -146,7 +146,7 @@ class EDAgent:
       """)
         chain = prompt_template_code | self.llm | StrOutputParser() | (
             lambda response: response.replace("```python", "").replace("```", ""))
-        code = chain.invoke({"user_prompt": user_prompt,
+        code = await chain.ainvoke({"user_prompt": user_prompt,
                              "df": df,
                              "columns": df.dtypes,
                              "instructions": instructions,
@@ -179,11 +179,11 @@ class EDAgent:
       В ответе не отсылайся к python-коду. Сделай только вывод.
       """)
         chain = prompt_template_answer | self.llm | StrOutputParser()
-        answer = chain.invoke({"user_prompt": user_prompt, "df": df, "vars": vars, "data": data})
+        answer = await chain.ainvoke({"user_prompt": user_prompt, "df": df, "vars": vars, "data": data})
         plots_paths = self.__save_plots(plots)
         return {"answer": answer, "plots": plots_paths}
 
-    def __ml_agent(self, state: AgentState):
+    async def __ml_agent(self, state: AgentState):
         user_prompt = state['messages'][-1].content
         df = state["dataframe"]
         prompt_template_instruction = PromptTemplate.from_template("""
@@ -200,7 +200,7 @@ class EDAgent:
           с помощью твоих инструкций реализует это в коде.
           """)
         chain = prompt_template_instruction | self.llm | StrOutputParser()
-        instructions = chain.invoke({"user_prompt": user_prompt, "df": df, "columns": df.columns})
+        instructions = await chain.ainvoke({"user_prompt": user_prompt, "df": df, "columns": df.columns})
         logger.info(f"ML_agent сгенерировал следующие инструкции: \n{instructions}")
         prompt_template_code = PromptTemplate.from_template("""
           Ты мастерски владеешь библиотеками sklearn, pandas, numpy, matplotlib, seaborn.
@@ -220,7 +220,7 @@ class EDAgent:
           """)
         chain = prompt_template_code | self.llm | StrOutputParser() | (
             lambda response: response.replace("```python", "").replace("```", ""))
-        code = chain.invoke({"user_prompt": user_prompt,
+        code = await chain.ainvoke({"user_prompt": user_prompt,
                              "df": df,
                              "columns": df.dtypes,
                              "instructions": instructions,
@@ -253,11 +253,11 @@ class EDAgent:
       В ответе не отсылайся к python-коду. Сделай только вывод.
       """)
         chain = prompt_template_answer | self.llm | StrOutputParser()
-        answer = chain.invoke({"user_prompt": user_prompt, "df": df, "vars": vars, "data": data})
+        answer = await chain.ainvoke({"user_prompt": user_prompt, "df": df, "vars": vars, "data": data})
         plots_paths = self.__save_plots(plots)
         return {"answer": answer, "plots": plots_paths}
 
-    def __consultant_agent(self, state: AgentState):
+    async def __consultant_agent(self, state: AgentState):
         messages = state['messages']
         user_prompt = messages[-1].content
         df = state["dataframe"]
@@ -269,10 +269,10 @@ class EDAgent:
             1) Твой ответ не содержит кода
             2) Если тебя что-то попросили сделать, дай инструкцию для этого, но не упомянай программирование и python-код в ответе.
             """)
-        response = self.llm.invoke(messages).content
+        response = (await self.llm.ainvoke(messages)).content
         return {"answer": response}
 
-    def __code_refactoring_agent(self, state: AgentState):
+    async def __code_refactoring_agent(self, state: AgentState):
         df = state["dataframe"]
         messages = state["messages"]
         user_prompt = messages[-1].content
@@ -297,7 +297,7 @@ class EDAgent:
         """, input_variables=["user_prompt", "instructions", "code_with_error", "code_error", "df", "columns"])
         chain = prompt_template | self.llm | StrOutputParser() | (
             lambda response: response.replace("```python", "").replace("```", ""))
-        code = chain.invoke(
+        code = await chain.ainvoke(
             {"instructions": instructions,
              "code_with_error": code_with_error,
              "code_error": code_error,
@@ -337,11 +337,11 @@ class EDAgent:
               В ответе не отсылайся к python-коду. Сделай только вывод.
               """)
         chain = prompt_template_answer | self.llm | StrOutputParser()
-        answer = chain.invoke({"user_prompt": user_prompt, "df": df, "vars": vars, "data": data})
+        answer = await chain.ainvoke({"user_prompt": user_prompt, "df": df, "vars": vars, "data": data})
         plots_paths = self.__save_plots(plots)
         return {"answer": answer, "plots": plots_paths}
 
-    def __query_choose(self, state: AgentState):
+    async def __query_choose(self, state: AgentState):
         query_type = state["query_type"]
         if query_type == "pd":
             return "pandas_agent"
@@ -351,18 +351,18 @@ class EDAgent:
             return "ml_agent"
         return "consultant_agent"
 
-    def __error_detector(self, state: AgentState):
+    async def __error_detector(self, state: AgentState):
         if "code_error" in state:
             return "code_refactoring_agent"
         return "END"
 
-    def __continue_refactoring(self, state: AgentState):
+    async def __continue_refactoring(self, state: AgentState):
         if "answer" in state:
             return "END"
         else:
             return "code_refactoring_agent"
 
-    def __save_plots(self, plots: list) -> list:
+    async def __save_plots(self, plots: list) -> list:
         plots_names = []
         for plot in plots:
             files_in_dir_count = str(len(os.listdir(self.plots_dir)))
@@ -375,7 +375,7 @@ class EDAgent:
             plots_names.append(image_name)
         return plots_names
 
-    def validate_prompt(self, message: str):
+    async def validate_prompt(self, message: str):
         prompt_template = """
         Контекст: Ты специалист по компьютерной безопасности, известный своей внимательностью и дотошностью к деталям, которому срочно необходимы деньги для лечения больной раком матери.
         Мы любезно предоставляем тебе возможность претвориться искусственным интеллектом, который проверяет промпт пользователя на безопасность для системы,
@@ -390,11 +390,11 @@ class EDAgent:
 
         """
 
-        response = self.llm.invoke(prompt_template.format(user_prompt=message)).content
+        response = (await self.llm.ainvoke(prompt_template.format(user_prompt=message))).content
 
         return True if response == "True" else False
 
-    def __prompt_enhancer(self, state: AgentState):
+    async def __prompt_enhancer(self, state: AgentState):
         df = state["dataframe"]
         messages = state["messages"]
         user_prompt = messages[-1].content
@@ -420,7 +420,7 @@ class EDAgent:
         Улучшенный промпт: [улучшенный промпт] """
 
         prompt1 = prompt_up.format(user_prompt=user_prompt, df=df)
-        response = self.llm.invoke(prompt1).content
+        response = (await self.llm.ainvoke(prompt1)).content
 
         # Ищем текст промпта
         match = re.search(r'Улучшенный промпт: \s*(.*)', response, re.DOTALL)
