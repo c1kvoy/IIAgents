@@ -26,7 +26,7 @@ agent_improved = EDAgent(llmimp)
 
 async def agent_processing(user_id, chat_id, df, db) -> str:
 
-    response = agent.invoke([SystemMessage(
+    response = await agent.ainvoke([SystemMessage(
         "Тебя зовут EDA_NA_DOM. Ты лучший аналитик данных и специалист в машинном обучении. Ответы присылай на русском языке!!!! Если вопрос слишком общий, то спроси какие-нибудь уточняющие детали."),
         HumanMessage("Сделай первичный анализ данных. Перечисли мне столбцы, их типы и количество наблюдений, предоставь общую информацию о представленных данных")], df)
     if "answer" in response:
@@ -50,7 +50,7 @@ async def interact(model: str, user_id: int, chat_id: int, message: str, db: Asy
     #     for msg in messages
     # ]
 
-    is_cool = agent.validate_prompt(message)
+    is_cool = await agent.validate_prompt(message)
     if not is_cool:
         raise FastAPIHTTPException(status_code=404, detail="unhealthy behavior")
 
@@ -72,18 +72,19 @@ async def interact(model: str, user_id: int, chat_id: int, message: str, db: Asy
 
     if model == "default":
         print("4o model")
-        response = agent.invoke([SystemMessage(
+        response = await agent.ainvoke([SystemMessage(
             "Тебя зовут EDA_NA_DOM. Ты лучший аналитик данных и специалист в машинном обучении. Ответы присылай на русском языке!!!"
         ), HumanMessage(message)] , df)
     else:
         print("o3 model")
-        response = agent_improved.invoke([SystemMessage(
+        response = await agent_improved.ainvoke([SystemMessage(
             "Тебя зовут EDA_NA_DOM. Ты лучший аналитик данных и специалист в машинном обучении. Ответы присылай на русском языке!!!"
         ), HumanMessage(message)], df)
 
     if response["answer"]:
-        if "plots" in response and response["plots"][0]:
-            ai_msg = MessageSchema(user_id=user_id, chat_id=chat_id, role="ai", message_text=response["answer"], created_at=datetime.now(), image=response['plots'][0])
+        plots = await response["plots"]() if callable(response.get("plots")) else response.get("plots", [])
+        if plots and plots[0]:
+            ai_msg = MessageSchema(user_id=user_id, chat_id=chat_id, role="ai", message_text=response["answer"], created_at=datetime.now(), image=plots[0])
         else:
             ai_msg = MessageSchema(user_id=user_id, chat_id=chat_id, role="ai", message_text=response["answer"],
                                    created_at=datetime.now())
@@ -95,4 +96,6 @@ async def interact(model: str, user_id: int, chat_id: int, message: str, db: Asy
         "plots": response.get("plots", []),
         "answer": response.get("answer", "Ответ не найден")
     }
+    print("##############")
+    print(final_response)
     return final_response
