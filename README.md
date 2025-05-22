@@ -47,7 +47,4 @@ InsightFlow может обрабатывать только CSV-файлы ра
 После запуска проекта будут доступны следующие интерфейсы:
 
 ### 🖥️ Веб-интерфейс
-- Главное приложение: [http://localhost:8080](http://localhost:8080)
-### 📡 API и документация
-- Swagger UI: [http://localhost:8000/docs](http://localhost:8000/docs) ЗАГЛУШКИ НАДО ЗАМЕНИТЬ
-- ReDoc: [http://localhost:8000/redoc](http://localhost:8000)
+- Главное приложение: [https://insightflow.deqstudio.com/home](https://insightflow.deqstudio.com/home)
